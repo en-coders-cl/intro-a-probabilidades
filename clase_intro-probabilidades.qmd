@@ -1,0 +1,678 @@
+---
+title: "Intro a Probabilidades"
+subtitle: "en_coders | Ciencia de Datos Aplicada"
+author: "en_coders"
+date: today
+format:
+  html:
+    theme: darkly
+    toc: true
+    toc-depth: 3
+    toc-title: "Contenido"
+    number-sections: true
+    highlight-style: dracula
+    code-fold: false
+    code-tools: true
+    fig-align: center
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+lang: es
+---
+
+![](assets/logo_en_coders.png){width=100px}
+
+---
+
+# 🎯 Objetivos de la Clase
+
+Al finalizar esta clase podrás:
+
+- Entender qué es un **espacio de probabilidad** y por qué necesitamos la teoría de la medida para hablar de probabilidades con rigor
+- Distinguir con precisión qué es una **variable aleatoria**, cómo difiere de una muestra empírica, y cuándo confundirlas te mete en problemas en producción
+- Calcular e interpretar **PDF, PMF, CDF, esperanza, varianza y desviación estándar**
+- Comprender de forma intuitiva la **Ley de Grandes Números** y el **Teorema Central del Límite**, y saber cuándo aplican (y cuándo *no*)
+- Ejecutar un **Z-Test** desde cero en Python y tomar una decisión de negocio basada en él
+
+---
+
+# 🌍 Contexto Empresarial
+
+> Imagina que eres Data Scientist en una fintech. Tu equipo acaba de lanzar una nueva interfaz de pago y quieres saber si la tasa de conversión mejoró respecto a la versión anterior. ¿Cómo decides si la diferencia que ves en los datos es real o solo ruido?
+>
+> La respuesta a esa pregunta vive completamente en esta clase.
+
+Todo lo que veremos hoy — desde teoría de conjuntos hasta el Z-Test — es la maquinaria que está debajo de cualquier test A/B, cualquier modelo probabilístico, y cualquier decisión basada en datos que hagas en una empresa real.
+
+---
+
+# Parte 1: Los Fundamentos
+
+## Teoría de Conjuntos
+
+Antes de hablar de probabilidades, necesitamos un lenguaje para describir *posibilidades*. Ese lenguaje es la teoría de conjuntos.
+
+Un **conjunto** es simplemente una colección de elementos. En probabilidades, el conjunto más importante es el **espacio muestral** $\Omega$: el universo de todos los resultados posibles de un experimento.
+
+**Ejemplos:**
+
+- Lanzar una moneda: $\Omega = \{cara, sello\}$
+- Tiempo de respuesta de una API en milisegundos: $\Omega = [0, \infty)$
+- Resultado de una transacción bancaria: $\Omega = \{aprobada, rechazada, pendiente\}$
+
+Un **evento** $A$ es cualquier subconjunto de $\Omega$: $A \subseteq \Omega$.
+
+Las operaciones fundamentales que usarás todo el tiempo:
+
+| Operación | Notación | Significado |
+|-----------|----------|-------------|
+| Unión | $A \cup B$ | Ocurre $A$ **o** $B$ (o ambos) |
+| Intersección | $A \cap B$ | Ocurren $A$ **y** $B$ |
+| Complemento | $A^c$ | **No** ocurre $A$ |
+| Diferencia | $A \setminus B$ | Ocurre $A$ pero **no** $B$ |
+
+<!-- PIZARRA: Dibujar el diagrama de Venn clásico con dos círculos solapados A y B dentro del rectángulo Ω. Marcar visualmente cada operación: sombrear la unión, la intersección, el complemento de A. Mostrar un ejemplo concreto con transacciones: A = {aprobada}, B = {mayor a $1000}, A∩B = transacción aprobada Y mayor a $1000. -->
+
+**¿Por qué importa esto en datos?**
+
+Cuando filtras un DataFrame con múltiples condiciones, estás haciendo operaciones de conjuntos. `df[(df["status"] == "approved") & (df["amount"] > 1000)]` es literalmente $A \cap B$.
+
+## Teoría de la Medida (versión superficial)
+
+Esta sección es para los que quieren entender *por qué* la probabilidad está definida como está, no solo *cómo* usarla.
+
+El problema central: no todos los subconjuntos de $\Omega$ son "medibles" de forma sensata. Esto suena esotérico, pero tiene consecuencias prácticas cuando $\Omega$ es infinito (como los reales).
+
+La solución es trabajar con una **$\sigma$-álgebra** $\mathcal{F}$: una familia de subconjuntos de $\Omega$ que sí podemos medir. Formalmente, $\mathcal{F}$ debe:
+
+1. Contener el conjunto vacío: $\emptyset \in \mathcal{F}$
+2. Ser cerrada bajo complementos: si $A \in \mathcal{F}$, entonces $A^c \in \mathcal{F}$
+3. Ser cerrada bajo uniones contables: si $A_1, A_2, \ldots \in \mathcal{F}$, entonces $\bigcup_{i=1}^{\infty} A_i \in \mathcal{F}$
+
+La terna $(\Omega, \mathcal{F}, P)$ se llama **espacio de probabilidad**. Es el fundamento de toda la estadística moderna.
+
+<!-- PIZARRA: Dibujar el espacio Ω como un rectángulo grande. Mostrar que F es una colección de subconjuntos "permitidos". Comparar con: si Ω = [0,1], los intervalos como [0.2, 0.7] son medibles, pero ciertos subconjuntos patológicos construidos con el Axioma de Elección no lo son (mencionar brevemente, no profundizar). El punto es: necesitamos esta estructura para que P sea consistente. -->
+
+::: {.callout-note}
+## Para los curiosos
+La $\sigma$-álgebra más usada en la práctica sobre $\mathbb{R}$ es la **$\sigma$-álgebra de Borel**, generada por todos los intervalos abiertos. Cuando trabajas con distribuciones continuas en Python o R, implícitamente estás trabajando con esta estructura.
+:::
+
+## Axiomas de Kolmogorov
+
+Andrei Kolmogorov formalizó la probabilidad en 1933 con tres axiomas elegantes. Todo lo demás se deriva de aquí.
+
+Dado un espacio de probabilidad $(\Omega, \mathcal{F}, P)$, la función de probabilidad $P: \mathcal{F} \to [0,1]$ debe satisfacer:
+
+**Axioma 1 — No negatividad:**
+$$P(A) \geq 0 \quad \forall A \in \mathcal{F}$$
+
+**Axioma 2 — Normalización:**
+$$P(\Omega) = 1$$
+
+**Axioma 3 — Aditividad contable:**
+Si $A_1, A_2, \ldots$ son eventos *mutuamente excluyentes* (disjuntos), entonces:
+$$P\left(\bigcup_{i=1}^{\infty} A_i\right) = \sum_{i=1}^{\infty} P(A_i)$$
+
+De estos tres axiomas se derivan todas las propiedades que conoces:
+
+- $P(A^c) = 1 - P(A)$
+- $P(\emptyset) = 0$
+- $P(A \cup B) = P(A) + P(B) - P(A \cap B)$
+
+<!-- PIZARRA: Mostrar la derivación de P(A^c) = 1 - P(A) paso a paso como ejercicio. Partir de que A y A^c son disjuntos y A ∪ A^c = Ω. Aplicar Axioma 3 y luego Axioma 2. Es una demostración de 3 líneas que ilustra muy bien cómo funciona el sistema axiomático. -->
+
+## Variable Aleatoria
+
+Aquí viene uno de los conceptos más importantes y más mal explicados de la estadística.
+
+**Definición formal:**
+
+Una variable aleatoria $X$ es una función medible del espacio muestral $\Omega$ a los reales $\mathbb{R}$:
+$$X: \Omega \to \mathbb{R}$$
+
+**Definición humana:**
+
+Una variable aleatoria es una regla que le asigna un número a cada resultado posible de un experimento. No es el número en sí — es la *función* que produce el número.
+
+<!-- PIZARRA: Dibujar dos "mundos": a la izquierda el espacio Ω con resultados cualitativos (ej: {aprobada, rechazada, pendiente}). A la derecha la recta real ℝ. Dibujar flechas de X que mapean: aprobada → 1, rechazada → 0, pendiente → 0.5. Enfatizar: X no es "el resultado del experimento". X es la función que convierte ese resultado en un número con el que podemos hacer matemáticas. -->
+
+**¿Por qué necesitamos este nivel de formalismo?**
+
+Porque cuando dices "la probabilidad de que una transacción sea aprobada es 0.85", en realidad estás diciendo:
+
+$$P(X = 1) = P(\{\omega \in \Omega : X(\omega) = 1\}) = 0.85$$
+
+Sin esta precisión, no puedes hablar rigurosamente de distribuciones, esperanzas, ni hacer inferencia.
+
+## Variables Aleatorias Discretas vs Continuas
+
+La distinción fundamental: ¿qué valores puede tomar $X$?
+
+### Discretas
+
+$X$ toma valores en un conjunto **contable**: $\{0, 1, 2, \ldots\}$ o $\{a, b, c\}$.
+
+**Ejemplos empresariales:**
+- Número de transacciones fallidas en un día
+- Cantidad de tickets de soporte abiertos por usuario
+- Resultado de un experimento A/B: $\{0, 1\}$
+
+### Continuas
+
+$X$ toma valores en un intervalo de $\mathbb{R}$. La probabilidad de *cualquier valor puntual exacto* es cero: $P(X = c) = 0$ para todo $c$.
+
+**Ejemplos empresariales:**
+- Tiempo hasta que un usuario hace churn (en días)
+- Latencia de una request en milisegundos
+- Monto de una transacción en pesos
+
+::: {.callout-warning}
+## Trampa común en producción
+
+El tiempo en segundos parece continuo, pero si tu sistema lo registra con precisión de milisegundos truncados, es discreto con muchos valores posibles. Esto importa cuando eliges tu distribución para modelarlo.
+:::
+
+## Variable Aleatoria vs Muestra Empírica
+
+Esta confusión destruye análisis enteros. Clarémosla de una vez.
+
+| Concepto | Qué es | Ejemplo |
+|----------|--------|---------|
+| **Variable aleatoria $X$** | Una función teórica. Un modelo. Vive en el mundo matemático. | "El tiempo de carga de una página sigue una distribución exponencial con parámetro $\lambda$" |
+| **Muestra empírica $x_1, x_2, \ldots, x_n$** | Realizaciones concretas observadas. Datos reales. Viven en tu DataFrame. | Los tiempos de carga registrados en los últimos 7 días: `[1.2, 0.8, 3.4, 1.1, ...]` |
+
+**La variable aleatoria genera la muestra, pero no es la muestra.**
+
+Cuando ajustas una distribución a tus datos (`scipy.stats.expon.fit(data)`), estás estimando los parámetros de $X$ usando tu muestra. Dos cosas completamente distintas.
+
+<!-- PIZARRA: Dibujar una curva de densidad a la izquierda (X, el modelo teórico). A la derecha, un histograma con datos reales de tiempos de respuesta. Flecha de izquierda a derecha: "X genera muestras". Flecha de derecha a izquierda: "los datos nos ayudan a estimar X". -->
+
+---
+
+# ☕ Pausa — Meme del Día
+
+<!-- MEME: Formato "two buttons" (el tipo sudando eligiendo entre dos botones rojos).
+     Botón 1: "Asumir que mis datos son normales y seguir con mi vida"
+     Botón 2: "Verificar la distribución correctamente antes de hacer el test"
+     El tipo sudando = cualquier data scientist bajo deadline.
+     Caption: "Viernes 5pm. El dashboard tiene que estar listo el lunes." -->
+
+::: {.callout-tip}
+## Meme del Día
+**Formato:** Two Buttons (el tipo sudando frente a dos botones rojos)
+
+- **Botón 1:** "Asumir que mis datos son normales y seguir con mi vida"
+- **Botón 2:** "Verificar la distribución correctamente antes de hacer el test"
+
+**Caption:** *Viernes 5pm. El dashboard tiene que estar listo el lunes.*
+
+*(Buscar: "two buttons meme" y reemplazar con imagen)*
+:::
+
+---
+
+# Parte 2: Distribuciones, Momentos y Teoremas
+
+## PMF y PDF: Cómo Describe una Variable Aleatoria Sus Probabilidades
+
+### PMF — Función de Masa de Probabilidad (discretas)
+
+Para una VA discreta $X$, la **PMF** (Probability Mass Function) asigna una probabilidad a cada valor posible:
+
+$$p_X(x) = P(X = x)$$
+
+Debe cumplir:
+$$\sum_{x} p_X(x) = 1$$
+
+**Ejemplo:** En un e-commerce, $X$ = número de artículos en el carrito. La PMF podría ser:
+
+| $x$ | 1 | 2 | 3 | 4 | 5+ |
+|-----|---|---|---|---|-----|
+| $p_X(x)$ | 0.40 | 0.30 | 0.15 | 0.10 | 0.05 |
+
+### PDF — Función de Densidad de Probabilidad (continuas)
+
+Para una VA continua $X$, no podemos asignar probabilidad a puntos — solo a intervalos:
+
+$$P(a \leq X \leq b) = \int_a^b f_X(x) \, dx$$
+
+La función $f_X(x)$ es la **PDF** (Probability Density Function). Dos propiedades fundamentales:
+
+1. $f_X(x) \geq 0$ para todo $x$
+2. $\int_{-\infty}^{\infty} f_X(x) \, dx = 1$
+
+::: {.callout-important}
+## $f_X(x)$ NO es una probabilidad
+
+$f_X(x)$ puede ser mayor que 1. Es una *densidad*. La probabilidad siempre requiere integrar sobre un intervalo, por pequeño que sea. Si ves $f_X(2.3) = 1.8$, eso está perfectamente bien.
+:::
+
+<!-- PIZARRA: Dibujar lado a lado: (izquierda) un diagrama de barras para la PMF del ejemplo del carrito. (derecha) una curva continua para una PDF gaussiana. Sombrear el área entre a y b en la PDF y escribir que eso es P(a ≤ X ≤ b). Marcar que las barras de la PMF tienen altura = probabilidad, pero la curva de la PDF tiene área = probabilidad. -->
+
+## CDF — Función de Distribución Acumulada
+
+La **CDF** (Cumulative Distribution Function) es la herramienta más versátil de toda la probabilidad. Funciona igual para variables discretas y continuas:
+
+$$F_X(x) = P(X \leq x)$$
+
+Propiedades que siempre se cumplen:
+
+- $\lim_{x \to -\infty} F_X(x) = 0$ y $\lim_{x \to +\infty} F_X(x) = 1$
+- $F_X$ es **no decreciente**
+- $F_X$ es continua por la derecha
+
+**La relación con PDF y PMF:**
+
+Para continuas: $F_X(x) = \int_{-\infty}^x f_X(t) \, dt$, y por lo tanto $f_X(x) = F_X'(x)$
+
+Para discretas: $F_X(x) = \sum_{t \leq x} p_X(t)$
+
+<!-- PIZARRA: Dibujar la PDF de una normal y debajo su CDF. Mostrar cómo el área acumulada bajo la PDF desde -∞ hasta x es exactamente el valor de F_X(x). Marcar percentiles: F_X(μ) = 0.5, F_X(μ + σ) ≈ 0.84. -->
+
+**¿Por qué la CDF es tan útil en producción?**
+
+- `scipy.stats.norm.cdf(x)` te da probabilidades en una línea
+- Los percentiles que ves en los dashboards de latencia (p50, p95, p99) son la CDF inversa: $F_X^{-1}(0.95)$
+- Es la base del Kolmogorov-Smirnov test para comparar distribuciones
+
+## Esperanza (Valor Esperado)
+
+La esperanza $\mathbb{E}[X]$ es el "centro de gravedad" de la distribución. El promedio si pudieras repetir el experimento infinitas veces.
+
+**Para variables discretas:**
+$$\mathbb{E}[X] = \sum_x x \cdot p_X(x)$$
+
+**Para variables continuas:**
+$$\mathbb{E}[X] = \int_{-\infty}^{\infty} x \cdot f_X(x) \, dx$$
+
+**Propiedades clave (linealidad):**
+$$\mathbb{E}[aX + b] = a\mathbb{E}[X] + b$$
+$$\mathbb{E}[X + Y] = \mathbb{E}[X] + \mathbb{E}[Y]$$
+
+La linealidad de la esperanza es la propiedad más usada en la práctica. No requiere independencia.
+
+::: {.callout-note}
+## ¿Cuándo la esperanza es engañosa?
+
+Si $X$ sigue una distribución bimodal (dos peaks), $\mathbb{E}[X]$ puede caer en el valle entre ambas modas — un valor que casi nunca ocurre. Siempre acompaña la esperanza con un análisis visual de la distribución.
+:::
+
+## Varianza y Desviación Estándar
+
+La varianza mide qué tan dispersa está la distribución alrededor de su media:
+
+$$\text{Var}(X) = \mathbb{E}\left[(X - \mathbb{E}[X])^2\right] = \mathbb{E}[X^2] - (\mathbb{E}[X])^2$$
+
+La segunda fórmula ($\mathbb{E}[X^2] - (\mathbb{E}[X])^2$) es la más útil para cálculos a mano y en código.
+
+La **desviación estándar** es simplemente:
+$$\sigma_X = \sqrt{\text{Var}(X)}$$
+
+Su ventaja: tiene las mismas unidades que $X$. Si $X$ es tiempo en milisegundos, $\sigma_X$ también está en milisegundos.
+
+**Propiedad importante:**
+$$\text{Var}(aX + b) = a^2 \text{Var}(X)$$
+
+Nótese que sumar una constante $b$ no cambia la varianza — desplazar la distribución no la hace más o menos dispersa.
+
+<!-- PIZARRA: Dibujar dos distribuciones con la misma media pero diferente varianza. Ejemplo: tiempo de respuesta de dos servidores con la misma latencia promedio pero uno mucho más errático. El servidor con varianza alta es un problema de UX aunque el promedio sea el mismo. -->
+
+## Ley de Grandes Números (LLN)
+
+Sea $X_1, X_2, \ldots, X_n$ una sucesión de variables aleatorias **i.i.d.** (independientes e idénticamente distribuidas) con media $\mu = \mathbb{E}[X]$. Define el promedio muestral:
+
+$$\bar{X}_n = \frac{1}{n} \sum_{i=1}^n X_i$$
+
+**LLN Débil:** $\bar{X}_n \xrightarrow{P} \mu$ cuando $n \to \infty$
+
+**LLN Fuerte:** $\bar{X}_n \xrightarrow{a.s.} \mu$ cuando $n \to \infty$
+
+En lenguaje llano: **a medida que acumulas más datos, el promedio muestral converge al promedio verdadero.**
+
+<!-- PIZARRA: Dibujar el eje x = número de lanzamientos de moneda (1 a 1000). Eje y = proporción acumulada de caras. Mostrar que al principio la línea oscila mucho, pero a medida que n crece se estabiliza alrededor de 0.5. Ese es el LLN visualmente. -->
+
+**Supuesto crítico que se olvida frecuentemente:**
+
+La LLN requiere que $\mathbb{E}[X]$ *exista y sea finita*. Hay distribuciones (como la Cauchy) donde esto no se cumple. Si tus datos tienen colas muy pesadas (distribuciones power-law), el promedio puede no converger. Esto ocurre en práctica con datos de redes sociales, eventos financieros extremos, etc.
+
+## Teorema Central del Límite (CLT)
+
+El teorema más importante de la estadística. Bajo las mismas condiciones i.i.d. con $\mathbb{E}[X] = \mu$ y $\text{Var}(X) = \sigma^2 < \infty$:
+
+$$\frac{\bar{X}_n - \mu}{\sigma / \sqrt{n}} \xrightarrow{d} \mathcal{N}(0, 1) \quad \text{cuando } n \to \infty$$
+
+Equivalentemente:
+$$\bar{X}_n \approx \mathcal{N}\!\left(\mu, \frac{\sigma^2}{n}\right) \quad \text{para } n \text{ grande}$$
+
+**Lo que dice:** sin importar la distribución original de $X$, el promedio de muchas muestras se distribuye aproximadamente normal.
+
+**Lo que NO dice:**
+- No dice que los datos individuales son normales
+- No dice cuánto es "n grande" (depende de cuán asimétrica sea la distribución original)
+- No aplica si $\text{Var}(X) = \infty$
+
+<!-- PIZARRA: Dibujar 4 distribuciones distintas (uniforme, exponencial, Bernoulli, bimodal). Abajo de cada una, dibujar la distribución del promedio de n=30 muestras. Todas convergen a una forma de campana. Ese es el CLT. -->
+
+::: {.callout-warning}
+## El CLT en producción: cuidado con las colas
+
+El CLT garantiza convergencia en distribución, pero los eventos extremos (la cola de la distribución) pueden comportarse muy diferente a lo que la normal sugiere. En riesgo financiero y en modelos de fraude, las colas importan más que el centro.
+:::
+
+## Z-Test: Aplicación Empresarial
+
+Ahora conectamos todo. El Z-Test es la aplicación directa del CLT para tomar decisiones.
+
+**El escenario:** Volvamos a la fintech. La tasa de conversión histórica es $\mu_0 = 0.124$ (12.4%). Lanzamos una nueva UI y medimos $n = 1200$ sesiones, con tasa observada $\hat{p} = 0.138$.
+
+¿Es esta diferencia estadísticamente significativa o solo ruido?
+
+**El estadístico Z:**
+
+$$Z = \frac{\hat{p} - \mu_0}{\sqrt{\mu_0(1-\mu_0)/n}}$$
+
+Bajo $H_0$ (la nueva UI no cambia nada), por el CLT, $Z \sim \mathcal{N}(0,1)$ para $n$ grande.
+
+**Hipótesis:**
+- $H_0$: $p = 0.124$ (no hay cambio)
+- $H_1$: $p > 0.124$ (la nueva UI mejora la conversión) — test de una cola
+
+**Decisión:** Si $|Z| > z_{\alpha/2}$ (para test de dos colas) o $Z > z_\alpha$ (para una cola), rechazamos $H_0$.
+
+Con $\alpha = 0.05$, el valor crítico es $z_{0.05} = 1.645$.
+
+La demo de Python al final calcula todo esto paso a paso.
+
+---
+
+# 💻 Demo: De la Teoría al Código
+
+## Setup
+
+```{python}
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
+from scipy import stats
+
+# Configuración visual consistente con el tema oscuro
+plt.style.use("dark_background")
+ACCENT_COLOR = "#00D4AA"
+SECONDARY_COLOR = "#FF6B6B"
+np.random.seed(42)
+```
+
+## PMF: Carrito de Compras
+
+```{python}
+# Distribución del número de artículos en el carrito (e-commerce)
+cart_sizes = np.array([1, 2, 3, 4, 5])
+cart_probs = np.array([0.40, 0.30, 0.15, 0.10, 0.05])
+
+fig, ax = plt.subplots(figsize=(8, 4))
+ax.bar(cart_sizes, cart_probs, color=ACCENT_COLOR, alpha=0.85, width=0.5)
+ax.set_xlabel("Artículos en el carrito")
+ax.set_ylabel("P(X = x)")
+ax.set_title("PMF — Artículos por carrito")
+ax.set_xticks(cart_sizes)
+
+# Esperanza y varianza desde la definición
+expected_cart = np.sum(cart_sizes * cart_probs)
+variance_cart = np.sum((cart_sizes - expected_cart)**2 * cart_probs)
+
+ax.axvline(expected_cart, color=SECONDARY_COLOR, linestyle="--", linewidth=2,
+           label=f"E[X] = {expected_cart:.2f}")
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+print(f"E[X]   = {expected_cart:.3f} artículos")
+print(f"Var(X) = {variance_cart:.3f}")
+print(f"σ(X)   = {np.sqrt(variance_cart):.3f} artículos")
+```
+
+## PDF y CDF: Latencia de API
+
+```{python}
+# Latencia de respuesta ~ Log-Normal (común en sistemas distribuidos)
+# Parámetros elegidos para que la mediana sea ~120ms y el p95 ~350ms
+mu_log, sigma_log = np.log(120), 0.6
+latency_dist = stats.lognorm(s=sigma_log, scale=np.exp(mu_log))
+
+x = np.linspace(0, 600, 1000)
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+# PDF
+ax1.plot(x, latency_dist.pdf(x), color=ACCENT_COLOR, linewidth=2)
+ax1.fill_between(x, latency_dist.pdf(x), alpha=0.2, color=ACCENT_COLOR)
+# Sombrear área para P(X > 300ms): requests lentas
+slow_mask = x > 300
+ax1.fill_between(x[slow_mask], latency_dist.pdf(x[slow_mask]),
+                 alpha=0.6, color=SECONDARY_COLOR,
+                 label=f"P(X > 300ms) = {1 - latency_dist.cdf(300):.3f}")
+ax1.set_title("PDF — Latencia de API (ms)")
+ax1.set_xlabel("Latencia (ms)")
+ax1.set_ylabel("Densidad f(x)")
+ax1.legend()
+
+# CDF
+ax2.plot(x, latency_dist.cdf(x), color=ACCENT_COLOR, linewidth=2)
+# Marcar p50, p95, p99
+for pct, color in [(0.50, "white"), (0.95, SECONDARY_COLOR), (0.99, "#FF9F43")]:
+    val = latency_dist.ppf(pct)
+    ax2.axhline(pct, color=color, linestyle=":", alpha=0.7)
+    ax2.axvline(val, color=color, linestyle=":", alpha=0.7,
+                label=f"p{int(pct*100)} = {val:.0f}ms")
+ax2.set_title("CDF — Latencia de API (ms)")
+ax2.set_xlabel("Latencia (ms)")
+ax2.set_ylabel("F(x) = P(X ≤ x)")
+ax2.legend()
+
+plt.tight_layout()
+plt.show()
+```
+
+## Ley de Grandes Números: Visualización
+
+```{python}
+# Lanzamientos de moneda: ¿cuánto tarda en converger la proporción a 0.5?
+n_flips = 5000
+flip_results = np.random.binomial(n=1, p=0.5, size=n_flips)
+cumulative_mean = np.cumsum(flip_results) / np.arange(1, n_flips + 1)
+
+fig, ax = plt.subplots(figsize=(10, 4))
+ax.plot(cumulative_mean, color=ACCENT_COLOR, linewidth=1.5, alpha=0.9,
+        label="Proporción acumulada de caras")
+ax.axhline(0.5, color=SECONDARY_COLOR, linestyle="--", linewidth=2,
+           label="Valor verdadero μ = 0.5")
+ax.fill_between(range(n_flips),
+                0.5 - 2/np.sqrt(np.arange(1, n_flips + 1)),
+                0.5 + 2/np.sqrt(np.arange(1, n_flips + 1)),
+                alpha=0.15, color=SECONDARY_COLOR, label="±2/√n")
+ax.set_xscale("log")
+ax.set_xlabel("Número de lanzamientos (escala log)")
+ax.set_ylabel("Proporción de caras")
+ax.set_title("Ley de Grandes Números — Convergencia del promedio muestral")
+ax.legend()
+plt.tight_layout()
+plt.show()
+```
+
+## Teorema Central del Límite: Visualización
+
+```{python}
+# Partimos de una distribución exponencial (claramente no normal)
+# y mostramos cómo el promedio de n muestras se normaliza
+
+base_dist = stats.expon(scale=1)  # media = 1, muy asimétrica
+sample_sizes = [1, 5, 30, 200]
+n_experiments = 3000
+
+fig, axes = plt.subplots(1, 4, figsize=(14, 4))
+
+for ax, n in zip(axes, sample_sizes):
+    # Calculamos el promedio de n muestras, n_experiments veces
+    sample_means = [base_dist.rvs(size=n).mean() for _ in range(n_experiments)]
+    
+    ax.hist(sample_means, bins=50, density=True,
+            color=ACCENT_COLOR, alpha=0.8, edgecolor="none")
+    
+    # Superponemos la normal teórica predicha por el CLT
+    mu_clt = base_dist.mean()
+    sigma_clt = base_dist.std() / np.sqrt(n)
+    x_range = np.linspace(min(sample_means), max(sample_means), 200)
+    ax.plot(x_range, stats.norm.pdf(x_range, mu_clt, sigma_clt),
+            color=SECONDARY_COLOR, linewidth=2, label="Normal (CLT)")
+    
+    ax.set_title(f"n = {n}")
+    ax.set_xlabel("X̄")
+    if n == 1:
+        ax.set_ylabel("Densidad")
+    ax.legend(fontsize=8)
+
+fig.suptitle("CLT — Promedio de muestras de una Exponencial", y=1.02)
+plt.tight_layout()
+plt.show()
+```
+
+## Z-Test: Decisión de Negocio
+
+```{python}
+# Escenario: ¿Mejoró la tasa de conversión con la nueva UI?
+p_baseline = 0.124      # tasa de conversión histórica
+p_observed = 0.138      # tasa observada con la nueva UI
+n_sessions = 1200       # sesiones en el experimento
+alpha = 0.05            # nivel de significancia
+
+# Estadístico Z
+standard_error = np.sqrt(p_baseline * (1 - p_baseline) / n_sessions)
+z_stat = (p_observed - p_baseline) / standard_error
+
+# Valor crítico y p-value (test de una cola: H1: p > p_baseline)
+z_critical = stats.norm.ppf(1 - alpha)
+p_value = 1 - stats.norm.cdf(z_stat)
+
+print("=" * 45)
+print("  Z-Test — Nueva UI vs Baseline")
+print("=" * 45)
+print(f"  Tasa baseline:       {p_baseline:.1%}")
+print(f"  Tasa observada:      {p_observed:.1%}")
+print(f"  Sesiones:            {n_sessions:,}")
+print(f"  Error estándar:      {standard_error:.5f}")
+print(f"  Estadístico Z:       {z_stat:.4f}")
+print(f"  Valor crítico (α=5%): {z_critical:.4f}")
+print(f"  p-value:             {p_value:.4f}")
+print("-" * 45)
+decision = "✅ RECHAZAMOS H₀" if z_stat > z_critical else "❌ No rechazamos H₀"
+print(f"  Decisión: {decision}")
+print("=" * 45)
+
+# Visualización de la zona de rechazo
+fig, ax = plt.subplots(figsize=(10, 4))
+x = np.linspace(-4, 4, 500)
+ax.plot(x, stats.norm.pdf(x), color=ACCENT_COLOR, linewidth=2, label="N(0,1) bajo H₀")
+
+# Región de rechazo
+reject_mask = x > z_critical
+ax.fill_between(x[reject_mask], stats.norm.pdf(x[reject_mask]),
+                color=SECONDARY_COLOR, alpha=0.5,
+                label=f"Zona de rechazo (α = {alpha})")
+
+# Estadístico observado
+ax.axvline(z_stat, color="#FF9F43", linestyle="--", linewidth=2.5,
+           label=f"Z observado = {z_stat:.2f}")
+ax.axvline(z_critical, color=SECONDARY_COLOR, linestyle=":", linewidth=1.5,
+           label=f"Z crítico = {z_critical:.2f}")
+
+ax.set_title("Z-Test — Distribución bajo H₀")
+ax.set_xlabel("Z")
+ax.set_ylabel("Densidad")
+ax.legend()
+plt.tight_layout()
+plt.show()
+```
+
+## Simulación Monte Carlo: LLN + CLT en Acción
+
+```{python}
+# El cierre: simulamos el experimento A/B muchas veces para ver
+# cómo se distribuyen los resultados cuando H0 ES verdadera
+# Esto ilustra por qué el p-value funciona
+
+n_simulations = 10_000
+simulated_z_scores = []
+
+for _ in range(n_simulations):
+    # Bajo H0, la verdadera tasa ES p_baseline
+    simulated_conversions = np.random.binomial(n=n_sessions, p=p_baseline) / n_sessions
+    z_sim = (simulated_conversions - p_baseline) / standard_error
+    simulated_z_scores.append(z_sim)
+
+simulated_z_scores = np.array(simulated_z_scores)
+empirical_p_value = np.mean(simulated_z_scores >= z_stat)
+
+fig, ax = plt.subplots(figsize=(10, 4))
+ax.hist(simulated_z_scores, bins=80, density=True,
+        color=ACCENT_COLOR, alpha=0.7, label="Z scores simulados bajo H₀")
+
+# Superponer normal teórica
+x = np.linspace(-4, 4, 500)
+ax.plot(x, stats.norm.pdf(x), color="white", linewidth=2, linestyle="--",
+        label="N(0,1) teórica")
+
+# Marcar nuestro Z observado
+ax.axvline(z_stat, color=SECONDARY_COLOR, linewidth=2.5,
+           label=f"Z observado = {z_stat:.2f}")
+ax.fill_between(x[x >= z_stat], stats.norm.pdf(x[x >= z_stat]),
+                color=SECONDARY_COLOR, alpha=0.4,
+                label=f"p-value empírico ≈ {empirical_p_value:.4f}")
+
+ax.set_title("Monte Carlo — ¿Qué tan raro es nuestro resultado bajo H₀?")
+ax.set_xlabel("Z")
+ax.set_ylabel("Densidad")
+ax.legend(fontsize=9)
+plt.tight_layout()
+plt.show()
+
+print(f"p-value analítico:  {p_value:.4f}")
+print(f"p-value Monte Carlo: {empirical_p_value:.4f}")
+print("→ El CLT funciona: ambos convergen.")
+```
+
+---
+
+# 📝 Resumen y Conclusiones
+
+## Lo que aprendimos hoy
+
+- La **teoría de conjuntos** es el lenguaje de los eventos, y los **axiomas de Kolmogorov** son las tres reglas que hacen que la probabilidad sea consistente
+- La **teoría de la medida** (superficialmente) nos dice qué subconjuntos podemos medir — importante para no tropezar con paradojas en distribuciones continuas
+- Una **variable aleatoria** es una *función* $X: \Omega \to \mathbb{R}$, no un número — y confundirla con una muestra empírica es un error frecuente con consecuencias reales
+- **PMF** para discretas, **PDF** para continuas: misma idea, diferente maquinaria. La **CDF** funciona para ambas y es la más útil en producción
+- **Esperanza** = centro de gravedad. **Varianza** = dispersión. **σ** = varianza en las unidades originales
+- **LLN**: el promedio converge al valor esperado. Requiere que la media exista.
+- **CLT**: el promedio de muchas muestras es aproximadamente normal. Fundamento de casi todo test estadístico.
+- **Z-Test**: aplicación directa del CLT para decidir si una diferencia observada es real
+
+## Lo que no vimos (y merece una clase propia)
+
+- Probabilidad condicional y regla de Bayes
+- Distribuciones multivariadas y covarianza
+- Tests no paramétricos (para cuando el CLT no aplica)
+- Bootstrap como alternativa moderna al CLT
+
+## Recursos adicionales
+
+- **Libro gratuito:** [Probability and Statistics for Data Science — NYU CDS](https://cims.nyu.edu/~cfgranda/pages/DSGA1002_fall17/index.html)
+- **Interactivo:** [Seeing Theory (Brown University)](https://seeing-theory.brown.edu/) — la mejor visualización de probabilidades que existe
+- **Para profundizar:** Casella & Berger — *Statistical Inference* (el libro clásico)
+- **Código de hoy:** todo el código de esta clase está en el repositorio de en_coders
+
+---
+
+*en_coders — YouTube & Twitch | Ciencia de Datos Aplicada*

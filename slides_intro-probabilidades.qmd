@@ -1,0 +1,441 @@
+---
+title: "Intro a Probabilidades"
+subtitle: "en\\_coders"
+author: "en\\_coders"
+date: today
+format:
+  beamer:
+    theme: metropolis
+    colortheme: owl
+    fonttheme: professionalfonts
+    aspectratio: 169
+    navigation: horizontal
+    section-titles: true
+    toc: false
+    highlight-style: dracula
+    include-in-header:
+      text: |
+        \usepackage{fontawesome5}
+        \usepackage{booktabs}
+        \definecolor{encoders_accent}{HTML}{00D4AA}
+        \definecolor{encoders_red}{HTML}{FF6B6B}
+        \setbeamercolor{alerted text}{fg=encoders_accent}
+        \setbeamercolor{example text}{fg=encoders_red}
+execute:
+  echo: false
+  warning: false
+  message: false
+lang: es
+---
+
+## {.plain}
+
+\begin{center}
+  \vspace{1em}
+  {\LARGE \textbf{Intro a Probabilidades}} \\[1em]
+  {\large \textcolor{encoders_accent}{en\_coders}} \\[0.5em]
+  {\normalsize Ciencia de Datos Aplicada} \\[2em]
+  {\small YouTube \(\cdot\) Twitch}
+\end{center}
+
+---
+
+# Intro
+
+## ¿Qué veremos hoy?
+
+\textbf{Parte 1 — Fundamentos}
+
+- Teoría de conjuntos y espacio muestral
+- Teoría de la medida (superficial)
+- Axiomas de Kolmogorov
+- Variable aleatoria: qué es de verdad
+- VA discreta vs continua
+- VA vs muestra empírica
+
+\vspace{0.5em}
+
+\textbf{Parte 2 — Distribuciones y Teoremas}
+
+- PMF y PDF | CDF | Esperanza | Varianza
+- Ley de Grandes Números
+- Teorema Central del Límite
+- \textcolor{encoders_accent}{Z-Test como aplicación empresarial}
+
+## ¿Por qué importa esto?
+
+\begin{exampleblock}{Escenario real}
+Eres Data Scientist en una fintech. Lanzaron una nueva UI de pagos. ¿Cómo sabes si la mejora en conversión es real o solo ruido estadístico?
+\end{exampleblock}
+
+\vspace{0.8em}
+
+\textbf{Todo lo de hoy nos lleva a poder responder esa pregunta.}
+
+---
+
+# Parte 1: Fundamentos
+
+## Teoría de Conjuntos
+
+\textbf{Espacio muestral} $\Omega$: todos los resultados posibles.
+
+\medskip
+
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\textbf{Ejemplos:}
+\begin{itemize}
+  \item Moneda: $\{cara, sello\}$
+  \item Transacción: $\{aprobada, rechazada, pendiente\}$
+  \item Latencia API: $[0, \infty)$
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+\textbf{Operaciones:}
+\begin{itemize}
+  \item $A \cup B$ — A \textbf{o} B
+  \item $A \cap B$ — A \textbf{y} B
+  \item $A^c$ — \textbf{no} A
+\end{itemize}
+\end{column}
+\end{columns}
+
+\vspace{0.8em}
+\begin{alertblock}{}
+\texttt{df[(cond\_A) \& (cond\_B)]} es literalmente $A \cap B$
+\end{alertblock}
+
+## Teoría de la Medida
+
+\textbf{Problema:} no todos los subconjuntos de $\Omega$ continuo son "medibles".
+
+\medskip
+
+\textbf{Solución:} trabajar con una $\sigma$\textbf{-álgebra} $\mathcal{F}$ — la familia de subconjuntos que sí podemos medir.
+
+\medskip
+
+La terna $(\Omega, \mathcal{F}, P)$ = \textbf{espacio de probabilidad}.
+
+\bigskip
+
+\textit{En la práctica: usamos la $\sigma$-álgebra de Borel sobre $\mathbb{R}$. Quarto, scipy, todo lo asume automáticamente.}
+
+\vspace{0.5em}
+\begin{block}{¿Por qué importa saberlo?}
+Para no asumir propiedades que no se cumplen con distribuciones de cola pesada.
+\end{block}
+
+<!-- PIZARRA: Dibujar el rectángulo Ω, mostrar que F es una selección de subconjuntos válidos. Mencionar que los intervalos [a,b] siempre son medibles. -->
+
+## Axiomas de Kolmogorov
+
+Tres reglas. Todo lo demás se deriva.
+
+\medskip
+
+\begin{enumerate}
+  \item \textbf{No negatividad:} $P(A) \geq 0$
+  \item \textbf{Normalización:} $P(\Omega) = 1$
+  \item \textbf{Aditividad:} si $A_i$ son disjuntos: $P\!\left(\bigcup A_i\right) = \sum P(A_i)$
+\end{enumerate}
+
+\bigskip
+
+\textbf{Consecuencias directas:}
+$$P(A^c) = 1 - P(A)$$
+$$P(A \cup B) = P(A) + P(B) - P(A \cap B)$$
+
+<!-- PIZARRA: Derivar P(A^c) = 1 - P(A) en 3 líneas usando los axiomas. Ejercicio en vivo. -->
+
+## Variable Aleatoria
+
+\begin{exampleblock}{Definición formal}
+$X: \Omega \to \mathbb{R}$ — una función medible del espacio muestral a los reales.
+\end{exampleblock}
+
+\medskip
+
+\textbf{Definición humana:} una regla que convierte resultados cualitativos en números.
+
+\bigskip
+
+\begin{columns}
+\begin{column}{0.45\textwidth}
+\textbf{Espacio muestral $\Omega$}
+\begin{itemize}
+  \item aprobada
+  \item rechazada
+  \item pendiente
+\end{itemize}
+\end{column}
+\begin{column}{0.1\textwidth}
+\[\xrightarrow{X}\]
+\end{column}
+\begin{column}{0.35\textwidth}
+\textbf{$\mathbb{R}$}
+\begin{itemize}
+  \item $\to 1$
+  \item $\to 0$
+  \item $\to 0.5$
+\end{itemize}
+\end{column}
+\end{columns}
+
+<!-- PIZARRA: Dibujar el mapeo Ω → ℝ con flechas. Enfatizar: X no es "el resultado", es la función. -->
+
+## Discreta vs Continua — y la Trampa de la Muestra
+
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\textbf{Discreta}\\
+Valores contables.\\
+\textit{Ej: tickets de soporte, resultado A/B}\\[0.8em]
+\textbf{Continua}\\
+Valores en un intervalo.\\
+$P(X = c) = 0$ para todo $c$.\\
+\textit{Ej: latencia, tiempo hasta churn}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{alertblock}{VA $\neq$ Muestra Empírica}
+\begin{itemize}
+  \item \textbf{VA}: modelo teórico, función matemática
+  \item \textbf{Muestra}: datos reales en tu DataFrame
+\end{itemize}
+La VA \textit{genera} la muestra. La muestra nos ayuda a \textit{estimar} la VA.
+\end{alertblock}
+\end{column}
+\end{columns}
+
+---
+
+# \faIcon{coffee} Pausa — Meme del Día {.plain}
+
+\begin{center}
+
+\vspace{1em}
+
+{\large \textbf{Formato: Two Buttons}}
+
+\vspace{1.5em}
+
+\begin{columns}
+\begin{column}{0.45\textwidth}
+\begin{block}{Botón 1}
+Asumir que mis datos son normales y seguir con mi vida
+\end{block}
+\end{column}
+\begin{column}{0.45\textwidth}
+\begin{alertblock}{Botón 2}
+Verificar la distribución correctamente antes de hacer el test
+\end{alertblock}
+\end{column}
+\end{columns}
+
+\vspace{1.5em}
+
+{\normalsize \textit{Viernes 5pm. El dashboard tiene que estar listo el lunes.}}
+
+\end{center}
+
+---
+
+# Parte 2: Distribuciones y Teoremas
+
+## PMF y PDF
+
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\textbf{PMF} (discreta)
+$$p_X(x) = P(X = x)$$
+$$\sum_x p_X(x) = 1$$
+\textit{Ej: artículos en carrito}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{PDF} (continua)
+$$P(a \leq X \leq b) = \int_a^b f_X(x)\,dx$$
+$$\int_{-\infty}^{\infty} f_X(x)\,dx = 1$$
+\textit{Ej: latencia de API}
+\end{column}
+\end{columns}
+
+\vspace{0.8em}
+
+\begin{alertblock}{Ojo}
+$f_X(x)$ puede ser $> 1$. No es una probabilidad. Es densidad. La probabilidad solo existe sobre intervalos.
+\end{alertblock}
+
+<!-- PIZARRA: Barras para PMF vs curva para PDF. Sombrear área en la PDF = probabilidad. -->
+
+## CDF — La Herramienta Más Versátil
+
+$$F_X(x) = P(X \leq x)$$
+
+Funciona igual para discretas y continuas.
+
+\bigskip
+
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\textbf{Propiedades:}
+\begin{itemize}
+  \item No decreciente
+  \item $F_X(-\infty) = 0$, $F_X(+\infty) = 1$
+  \item Continua por la derecha
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+\textbf{En producción:}
+\begin{itemize}
+  \item \texttt{scipy.stats.norm.cdf(x)}
+  \item Percentiles: $F_X^{-1}(0.95)$ = p95
+  \item Base del KS-test
+\end{itemize}
+\end{column}
+\end{columns}
+
+<!-- PIZARRA: PDF arriba, CDF abajo. Mostrar que el área acumulada = valor en la CDF. Marcar p50=0.5, p95, p99. -->
+
+## Esperanza, Varianza y Desviación Estándar
+
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\textbf{Esperanza} — centro de gravedad
+$$\mathbb{E}[X] = \int x \cdot f_X(x)\,dx$$
+$$\mathbb{E}[aX + b] = a\mathbb{E}[X] + b$$
+\textit{Linealidad: no requiere independencia.}
+\end{column}
+\begin{column}{0.5\textwidth}
+\textbf{Varianza} — dispersión
+$$\text{Var}(X) = \mathbb{E}[X^2] - (\mathbb{E}[X])^2$$
+$$\text{Var}(aX + b) = a^2\text{Var}(X)$$
+\textbf{Desviación estándar}
+$$\sigma_X = \sqrt{\text{Var}(X)}$$
+\textit{Mismas unidades que $X$.}
+\end{column}
+\end{columns}
+
+<!-- PIZARRA: Dos distribuciones con igual media, diferente varianza. Servidor A vs Servidor B — mismo promedio de latencia, pero B es muy errático. El promedio no cuenta toda la historia. -->
+
+## Ley de Grandes Números
+
+Sea $X_1, \ldots, X_n$ i.i.d. con media $\mu$. Entonces:
+
+$$\bar{X}_n = \frac{1}{n}\sum_{i=1}^n X_i \xrightarrow{n \to \infty} \mu$$
+
+\bigskip
+
+\begin{block}{Intuición}
+Cuantos más datos acumulas, el promedio muestral se estabiliza en el verdadero promedio.
+\end{block}
+
+\vspace{0.5em}
+
+\begin{alertblock}{Supuesto crítico}
+$\mathbb{E}[X]$ debe existir y ser finita. Con distribuciones power-law (redes sociales, eventos extremos), esto puede fallar.
+\end{alertblock}
+
+<!-- PIZARRA: Graficar proporción acumulada de caras en lanzamientos de moneda. Al principio oscila, a medida que n crece converge a 0.5. -->
+
+## Teorema Central del Límite
+
+Bajo las mismas condiciones i.i.d., con $\text{Var}(X) = \sigma^2 < \infty$:
+
+$$\frac{\bar{X}_n - \mu}{\sigma/\sqrt{n}} \xrightarrow{d} \mathcal{N}(0, 1)$$
+
+\bigskip
+
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\textbf{Lo que SÍ dice:}\\
+El promedio de $n$ muestras se distribuye aproximadamente normal, sin importar la distribución original.
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Lo que NO dice:}\\
+\begin{itemize}
+  \item Que los datos son normales
+  \item Cuánto es "n grande"
+  \item Que las colas se comportan bien
+\end{itemize}
+\end{column}
+\end{columns}
+
+<!-- PIZARRA: 4 distribuciones distintas → en sus promedios de n=30 todas se ven como una campana. -->
+
+## Z-Test: Todo Junto
+
+\textbf{Escenario:} ¿Mejoró la conversión con la nueva UI?
+
+$$Z = \frac{\hat{p} - p_0}{\sqrt{p_0(1-p_0)/n}}$$
+
+\medskip
+
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\begin{block}{Datos}
+\begin{itemize}
+  \item Baseline: $p_0 = 12.4\%$
+  \item Observado: $\hat{p} = 13.8\%$
+  \item Sesiones: $n = 1200$
+\end{itemize}
+\end{block}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{alertblock}{Resultado}
+\begin{itemize}
+  \item $Z = 1.72$
+  \item $Z_{crítico} = 1.645$
+  \item $p\text{-value} = 0.043$
+  \item \textbf{Rechazamos $H_0$ ✅}
+\end{itemize}
+\end{alertblock}
+\end{column}
+\end{columns}
+
+\vspace{0.5em}
+\textit{La nueva UI sí mejora la conversión (con 95\% de confianza).}
+
+---
+
+# Cierre
+
+## Resumen de la Clase
+
+\begin{enumerate}
+  \item \textbf{Fundamentos:} $(\Omega, \mathcal{F}, P)$ + axiomas de Kolmogorov = base sólida
+  \item \textbf{Variable aleatoria:} una función, no un número. VA $\neq$ muestra.
+  \item \textbf{PMF / PDF / CDF:} tres formas de describir una distribución
+  \item \textbf{$\mathbb{E}[X]$, $\text{Var}(X)$, $\sigma$:} resúmenes de la distribución
+  \item \textbf{LLN:} el promedio converge (si la media existe)
+  \item \textbf{CLT:} el promedio se normaliza (si la varianza es finita)
+  \item \textbf{Z-Test:} CLT aplicado a decisiones de negocio reales
+\end{enumerate}
+
+## Próxima Clase — Probabilidad Condicional y Bayes
+
+\textbf{Lo que viene:}
+\begin{itemize}
+  \item $P(A | B)$ — probabilidad condicional
+  \item Regla de Bayes y su uso en ML
+  \item Naive Bayes como clasificador empresarial
+  \item Demo: filtro de spam desde cero
+\end{itemize}
+
+\vspace{1em}
+
+\textbf{Para estudiar antes:}
+\begin{itemize}
+  \item \href{https://seeing-theory.brown.edu/}{Seeing Theory (Brown University)}
+  \item Capítulo 1 de Casella \& Berger
+\end{itemize}
+
+## {.plain}
+
+\begin{center}
+  \vspace{2em}
+  {\LARGE ¡Gracias!} \\[1.5em]
+  \textcolor{encoders_accent}{\texttt{@en\_coders}} \\[0.8em]
+  {\normalsize YouTube \(\cdot\) Twitch} \\[2em]
+  {\small Todo el código de hoy en el repo del canal}
+\end{center}

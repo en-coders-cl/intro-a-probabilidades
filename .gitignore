@@ -1,0 +1,6 @@
+revealjs*
+assets
+*.html
+*.tex
+*.fdb_latexmk
+*.log
