@@ -1,5 +1,5 @@
 # Clase: Intro a Probabilidades
-**en_coders** — Ciencia de Datos Aplicada
+**en_coders** 
 
 ---
 
