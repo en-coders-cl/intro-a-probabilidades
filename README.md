@@ -14,6 +14,9 @@ quarto render slides_intro-probabilidades.qmd
 
 # Instalar TinyTeX si no tienes LaTeX:
 quarto install tinytex
+
+# Presentación RevealJS (no requiere LaTeX)
+quarto render revealjs_intro-probabilidades.qmd
 ```
 
 ## Estructura del paquete
