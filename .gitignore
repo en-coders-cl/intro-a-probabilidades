@@ -4,3 +4,4 @@ assets
 *.tex
 *.fdb_latexmk
 *.log
+*.pdf
